@@ -6,6 +6,8 @@
 
 enum {
     PAGE_SIZE = 256,
+    PAGE_COUNT = 256,
+    FRAME_COUNT = 256,
     MAX_LOGICAL_ADDRESS = 65535
 };
 
@@ -66,10 +68,43 @@ static bool valid_policy(const char *policy)
     return strcmp(policy, "fifo") == 0 || strcmp(policy, "lru") == 0;
 }
 
-static void print_translation(unsigned int address)
+struct virtual_memory {
+    int page_table[PAGE_COUNT];
+    unsigned char frames[FRAME_COUNT][PAGE_SIZE];
+    unsigned int next_frame;
+};
+
+static bool translate_address(struct virtual_memory *memory, FILE *backing_store,
+                              unsigned int address)
 {
-    printf("Address: %u Page: %u Offset: %u\n",
-           address, address / PAGE_SIZE, address % PAGE_SIZE);
+    unsigned int page = address / PAGE_SIZE;
+    unsigned int offset = address % PAGE_SIZE;
+    int frame = memory->page_table[page];
+
+    if (frame == -1) {
+        if (memory->next_frame >= FRAME_COUNT) {
+            fprintf(stderr, "No free physical frame\n");
+            return false;
+        }
+        frame = (int)memory->next_frame;
+        if (fseek(backing_store, (long)(page * PAGE_SIZE), SEEK_SET) != 0) {
+            fprintf(stderr, "Cannot seek to page %u in BACKING_STORE.bin\n", page);
+            return false;
+        }
+        if (fread(memory->frames[frame], 1, PAGE_SIZE, backing_store) != PAGE_SIZE) {
+            fprintf(stderr, "Cannot read complete page %u from BACKING_STORE.bin\n", page);
+            return false;
+        }
+        memory->page_table[page] = frame;
+        ++memory->next_frame;
+    }
+
+    unsigned int physical_address = (unsigned int)frame * PAGE_SIZE + offset;
+    unsigned int byte = memory->frames[frame][offset];
+    int value = byte < 128 ? (int)byte : (int)byte - 256;
+    printf("Virtual address: %u Physical address: %u Value: %d\n",
+           address, physical_address, value);
+    return true;
 }
 
 int main(int argc, char *argv[])
@@ -94,14 +129,31 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    FILE *backing_store = fopen("BACKING_STORE.bin", "rb");
+    if (backing_store == NULL) {
+        fprintf(stderr, "Cannot open BACKING_STORE.bin\n");
+        fclose(file);
+        return EXIT_FAILURE;
+    }
+
+    struct virtual_memory memory = {0};
+    for (unsigned int page = 0; page < PAGE_COUNT; ++page) {
+        memory.page_table[page] = -1;
+    }
+
     unsigned int address;
     size_t line = 1;
     enum address_result result;
     while ((result = read_address(file, &address)) == ADDRESS_OK) {
-        print_translation(address);
+        if (!translate_address(&memory, backing_store, address)) {
+            fclose(backing_store);
+            fclose(file);
+            return EXIT_FAILURE;
+        }
         ++line;
     }
     fclose(file);
+    fclose(backing_store);
 
     if (result == ADDRESS_READ_ERROR) {
         fprintf(stderr, "Cannot read address file '%s' at line %zu\n", argv[1], line);
