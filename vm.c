@@ -7,7 +7,7 @@
 enum {
     PAGE_SIZE = 256,
     PAGE_COUNT = 256,
-    FRAME_COUNT = 256,
+    FRAME_COUNT = 128,
     MAX_LOGICAL_ADDRESS = 65535
 };
 
@@ -70,8 +70,10 @@ static bool valid_policy(const char *policy)
 
 struct virtual_memory {
     int page_table[PAGE_COUNT];
+    unsigned int frame_pages[FRAME_COUNT];
     unsigned char frames[FRAME_COUNT][PAGE_SIZE];
     unsigned int next_frame;
+    unsigned int fifo_victim;
 };
 
 static bool translate_address(struct virtual_memory *memory, FILE *backing_store,
@@ -82,11 +84,8 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
     int frame = memory->page_table[page];
 
     if (frame == -1) {
-        if (memory->next_frame >= FRAME_COUNT) {
-            fprintf(stderr, "No free physical frame\n");
-            return false;
-        }
-        frame = (int)memory->next_frame;
+        bool replacing = memory->next_frame == FRAME_COUNT;
+        frame = (int)(replacing ? memory->fifo_victim : memory->next_frame);
         if (fseek(backing_store, (long)(page * PAGE_SIZE), SEEK_SET) != 0) {
             fprintf(stderr, "Cannot seek to page %u in BACKING_STORE.bin\n", page);
             return false;
@@ -95,8 +94,14 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
             fprintf(stderr, "Cannot read complete page %u from BACKING_STORE.bin\n", page);
             return false;
         }
+        if (replacing) {
+            memory->page_table[memory->frame_pages[frame]] = -1;
+            memory->fifo_victim = (memory->fifo_victim + 1) % FRAME_COUNT;
+        } else {
+            ++memory->next_frame;
+        }
+        memory->frame_pages[frame] = page;
         memory->page_table[page] = frame;
-        ++memory->next_frame;
     }
 
     unsigned int physical_address = (unsigned int)frame * PAGE_SIZE + offset;
