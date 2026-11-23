@@ -74,7 +74,36 @@ struct virtual_memory {
     unsigned char frames[FRAME_COUNT][PAGE_SIZE];
     unsigned int next_frame;
     unsigned int fifo_victim;
+    bool use_lru;
+    unsigned int recency[FRAME_COUNT];
 };
+
+static unsigned int replacement_frame(const struct virtual_memory *memory)
+{
+    if (!memory->use_lru) {
+        return memory->fifo_victim;
+    }
+
+    unsigned int victim = 0;
+    for (unsigned int frame = 1; frame < FRAME_COUNT; ++frame) {
+        if (memory->recency[frame] < memory->recency[victim]) {
+            victim = frame;
+        }
+    }
+    return victim;
+}
+
+static void record_access(struct virtual_memory *memory, unsigned int frame)
+{
+    /* Ranks run from least to most recent and stay bounded by FRAME_COUNT. */
+    unsigned int previous = memory->recency[frame];
+    for (unsigned int other = 0; other < memory->next_frame; ++other) {
+        if (memory->recency[other] > previous) {
+            --memory->recency[other];
+        }
+    }
+    memory->recency[frame] = memory->next_frame - 1;
+}
 
 static bool translate_address(struct virtual_memory *memory, FILE *backing_store,
                               unsigned int address)
@@ -85,7 +114,7 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
 
     if (frame == -1) {
         bool replacing = memory->next_frame == FRAME_COUNT;
-        frame = (int)(replacing ? memory->fifo_victim : memory->next_frame);
+        frame = (int)(replacing ? replacement_frame(memory) : memory->next_frame);
         if (fseek(backing_store, (long)(page * PAGE_SIZE), SEEK_SET) != 0) {
             fprintf(stderr, "Cannot seek to page %u in BACKING_STORE.bin\n", page);
             return false;
@@ -96,12 +125,19 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
         }
         if (replacing) {
             memory->page_table[memory->frame_pages[frame]] = -1;
-            memory->fifo_victim = (memory->fifo_victim + 1) % FRAME_COUNT;
+            if (!memory->use_lru) {
+                memory->fifo_victim = (memory->fifo_victim + 1) % FRAME_COUNT;
+            }
         } else {
+            memory->recency[frame] = memory->next_frame;
             ++memory->next_frame;
         }
         memory->frame_pages[frame] = page;
         memory->page_table[page] = frame;
+    }
+
+    if (memory->use_lru) {
+        record_access(memory, (unsigned int)frame);
     }
 
     unsigned int physical_address = (unsigned int)frame * PAGE_SIZE + offset;
@@ -142,6 +178,7 @@ int main(int argc, char *argv[])
     }
 
     struct virtual_memory memory = {0};
+    memory.use_lru = strcmp(argv[2], "lru") == 0;
     for (unsigned int page = 0; page < PAGE_COUNT; ++page) {
         memory.page_table[page] = -1;
     }
