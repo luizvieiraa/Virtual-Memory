@@ -99,3 +99,12 @@ NOTAS E LIMITES
 - lhcv.tar: apenas lhcv/vm.c e lhcv/Makefile; sem binarios ou anexos.
 - PDF revisado visualmente em tres paginas.
 - Sem push automatico e sem envio ao Classroom.
+
+REVISAO DO RELATORIO - MODELO DAS ENTREGAS ANTERIORES
+- Referencias locais: Desktop/Deadlock/lhcv.pdf e Desktop/sync/lhcv.pdf.
+- Identificacao completa conferida nos dois relatorios anteriores.
+- Relatorio reformulado com dez secoes e sete paginas no padrao Deadlock.
+- Uso de IA, diario, evidencias, reflexao e checklists preenchidos com os resultados registrados.
+- Todas as paginas renderizadas e revisadas visualmente; sem cortes ou sobreposicoes.
+- Pendencia do BACKING_STORE.bin original mantida explicitamente.
+- Codigo C, Makefile e conteudo do TAR nao alterados nesta revisao.

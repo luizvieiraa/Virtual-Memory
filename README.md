@@ -1,6 +1,6 @@
 # Implementação 7 - Memória virtual
 
-Autor: Luiz Vieira. Identificador de entrega: `lhcv`.
+Autor: Luiz Henrique Carvalho Vieira. Identificador de entrega: `lhcv`.
 
 Simulador em C11 com 256 páginas lógicas, páginas de 256 bytes, 128 frames
 físicos e TLB de 16 entradas. As políticas FIFO e LRU são independentes para
