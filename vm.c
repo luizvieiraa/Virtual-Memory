@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +9,7 @@ enum {
     PAGE_SIZE = 256,
     PAGE_COUNT = 256,
     FRAME_COUNT = 128,
+    TLB_SIZE = 16,
     MAX_LOGICAL_ADDRESS = 65535
 };
 
@@ -68,6 +70,13 @@ static bool valid_policy(const char *policy)
     return strcmp(policy, "fifo") == 0 || strcmp(policy, "lru") == 0;
 }
 
+struct tlb_entry {
+    bool valid;
+    unsigned int page;
+    unsigned int frame;
+    uint64_t last_used;
+};
+
 struct virtual_memory {
     int page_table[PAGE_COUNT];
     unsigned int frame_pages[FRAME_COUNT];
@@ -76,7 +85,48 @@ struct virtual_memory {
     unsigned int fifo_victim;
     bool use_lru;
     unsigned int recency[FRAME_COUNT];
+    struct tlb_entry tlb[TLB_SIZE];
+    bool tlb_use_lru;
+    uint64_t clock;
+    size_t translated;
+    size_t page_faults;
+    size_t tlb_hits;
 };
+
+static int find_tlb(const struct virtual_memory *memory, unsigned int page)
+{
+    for (unsigned int entry = 0; entry < TLB_SIZE; ++entry) {
+        if (memory->tlb[entry].valid && memory->tlb[entry].page == page) {
+            return (int)entry;
+        }
+    }
+    return -1;
+}
+
+static void invalidate_tlb(struct virtual_memory *memory, unsigned int page)
+{
+    int entry = find_tlb(memory, page);
+    if (entry != -1) {
+        memory->tlb[entry].valid = false;
+    }
+}
+
+static unsigned int insert_tlb(struct virtual_memory *memory,
+                               unsigned int page, unsigned int frame)
+{
+    unsigned int victim = 0;
+    for (unsigned int entry = 0; entry < TLB_SIZE; ++entry) {
+        if (!memory->tlb[entry].valid) {
+            victim = entry;
+            break;
+        }
+        if (memory->tlb[entry].last_used < memory->tlb[victim].last_used) {
+            victim = entry;
+        }
+    }
+    memory->tlb[victim] = (struct tlb_entry){true, page, frame, memory->clock};
+    return victim;
+}
 
 static unsigned int replacement_frame(const struct virtual_memory *memory)
 {
@@ -106,11 +156,22 @@ static void record_access(struct virtual_memory *memory, unsigned int frame)
 }
 
 static bool translate_address(struct virtual_memory *memory, FILE *backing_store,
-                              unsigned int address)
+                              FILE *output, unsigned int address)
 {
     unsigned int page = address / PAGE_SIZE;
     unsigned int offset = address % PAGE_SIZE;
-    int frame = memory->page_table[page];
+    ++memory->clock;
+    int entry = find_tlb(memory, page);
+    int frame;
+    if (entry != -1) {
+        ++memory->tlb_hits;
+        frame = (int)memory->tlb[entry].frame;
+        if (memory->tlb_use_lru) {
+            memory->tlb[entry].last_used = memory->clock;
+        }
+    } else {
+        frame = memory->page_table[page];
+    }
 
     if (frame == -1) {
         bool replacing = memory->next_frame == FRAME_COUNT;
@@ -124,6 +185,7 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
             return false;
         }
         if (replacing) {
+            invalidate_tlb(memory, memory->frame_pages[frame]);
             memory->page_table[memory->frame_pages[frame]] = -1;
             if (!memory->use_lru) {
                 memory->fifo_victim = (memory->fifo_victim + 1) % FRAME_COUNT;
@@ -134,8 +196,12 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
         }
         memory->frame_pages[frame] = page;
         memory->page_table[page] = frame;
+        ++memory->page_faults;
     }
 
+    if (entry == -1) {
+        entry = (int)insert_tlb(memory, page, (unsigned int)frame);
+    }
     if (memory->use_lru) {
         record_access(memory, (unsigned int)frame);
     }
@@ -143,8 +209,12 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
     unsigned int physical_address = (unsigned int)frame * PAGE_SIZE + offset;
     unsigned int byte = memory->frames[frame][offset];
     int value = byte < 128 ? (int)byte : (int)byte - 256;
-    printf("Virtual address: %u Physical address: %u Value: %d\n",
-           address, physical_address, value);
+    if (fprintf(output, "Virtual address: %u TLB: %d Physical address: %u Value: %d\n",
+                address, entry, physical_address, value) < 0) {
+        fprintf(stderr, "Cannot write correct.txt\n");
+        return false;
+    }
+    ++memory->translated;
     return true;
 }
 
@@ -179,6 +249,7 @@ int main(int argc, char *argv[])
 
     struct virtual_memory memory = {0};
     memory.use_lru = strcmp(argv[2], "lru") == 0;
+    memory.tlb_use_lru = strcmp(argv[3], "lru") == 0;
     for (unsigned int page = 0; page < PAGE_COUNT; ++page) {
         memory.page_table[page] = -1;
     }
@@ -186,8 +257,16 @@ int main(int argc, char *argv[])
     unsigned int address;
     size_t line = 1;
     enum address_result result;
+    FILE *output = fopen("correct.txt", "w");
+    if (output == NULL) {
+        fprintf(stderr, "Cannot open correct.txt for writing\n");
+        fclose(backing_store);
+        fclose(file);
+        return EXIT_FAILURE;
+    }
     while ((result = read_address(file, &address)) == ADDRESS_OK) {
-        if (!translate_address(&memory, backing_store, address)) {
+        if (!translate_address(&memory, backing_store, output, address)) {
+            fclose(output);
             fclose(backing_store);
             fclose(file);
             return EXIT_FAILURE;
@@ -196,6 +275,26 @@ int main(int argc, char *argv[])
     }
     fclose(file);
     fclose(backing_store);
+
+    bool output_ok = true;
+    if (result == ADDRESS_END && memory.translated != 0) {
+        output_ok = fprintf(output,
+            "Number of Translated Addresses = %zu\n"
+            "Page Faults = %zu\n"
+            "Page Fault Rate = %.3f\n"
+            "TLB Hits = %zu\n"
+            "TLB Hit Rate = %.3f\n",
+            memory.translated, memory.page_faults,
+            (double)memory.page_faults / memory.translated,
+            memory.tlb_hits, (double)memory.tlb_hits / memory.translated) >= 0;
+    }
+    if (fclose(output) != 0) {
+        output_ok = false;
+    }
+    if (!output_ok) {
+        fprintf(stderr, "Cannot write correct.txt\n");
+        return EXIT_FAILURE;
+    }
 
     if (result == ADDRESS_READ_ERROR) {
         fprintf(stderr, "Cannot read address file '%s' at line %zu\n", argv[1], line);
