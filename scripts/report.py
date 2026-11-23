@@ -130,7 +130,7 @@ table([
     ['Alternar build Linux/Windows', 'Falha de ambiente', 'Build existente impediu gerar vm.exe; recompilar com -B resolveu.'],
     ['Gerar e validar a entrega', 'OK', '6f6be4f; 23/11; suíte no TAR extraído.'],
 ], [222, 72, 213])
-p('O diário descreve as etapas e os resultados registrados no histórico e no evidencias.log. Não foi documentado um bug funcional com captura antes/depois nesta implementação. A falha de ambiente acima foi de compilação entre sistemas, sem alteração do algoritmo. ¹ A limitação dos bytes está descrita na seção 6.2.')
+p('Registrei no diário as etapas e os resultados disponíveis no histórico e no evidencias.log. Não registrei um bug funcional com captura antes/depois nesta implementação. A falha de ambiente acima foi de compilação entre sistemas, sem alteração do algoritmo. ¹ A limitação dos bytes está descrita na seção 6.2.')
 h('5.3 Núcleo do algoritmo')
 p('A consulta usa página = endereço / 256 e deslocamento = endereço % 256. Em miss da TLB, consulta a tabela; em page fault, lê 256 bytes na posição página × 256. Calcula frame × 256 + deslocamento e converte o byte para -128..127. A busca cria 16 threads por acesso; o custo de criação e junção pode superar o de uma busca sequencial tão curta. Não foi medida aceleração.')
 
@@ -184,7 +184,7 @@ p('As versões intermediárias da rubrica estão preservadas nesses commits. A v
 page()
 h('7. Uso de IA')
 p('Utilizei IA generativa para interpretar o enunciado, dividir o desenvolvimento em etapas, implementar e revisar o código em C, preparar Makefile e testes, comparar saídas e organizar README, evidências e relatório. Também solicitei à ferramenta a execução dos comandos no computador e a criação de um commit por etapa.')
-p('Prompts principais, resumidos a partir da conversa:')
+p('Principais solicitações que fiz à ferramenta:')
 table([
     ['#', 'Solicitação'],
     ['1', 'Analisar a implementação e dividir o desenvolvimento em etapas.'],
@@ -195,7 +195,7 @@ table([
     ['6', 'Concluir a etapa 8 e gerar a documentação e o pacote de entrega.'],
     ['7', 'Refazer o relatório no padrão dos PDFs anteriores de Deadlock e Sync.'],
 ], [30, 477])
-p('<b>Validação realizada:</b> a compilação, os testes, a comparação com o gabarito e a extração do TAR foram executados pelo assistente e registrados no log. A revisão manual independente do aluno não está registrada nas evidências disponíveis.')
+p('<b>Como validei:</b> utilizei a ferramenta de IA para executar a compilação, os testes automatizados, a comparação com o gabarito e a extração do TAR. Mantive os resultados no evidencias.log. Essa validação foi automatizada com apoio de IA; não registrei uma sessão manual separada.')
 h('8. Reflexão Final')
 p('A tradução correta depende de manter coerentes a TLB, a tabela de páginas e a ocupação dos frames. Um mapeamento antigo na TLB pode apontar para um frame que já pertence a outra página. Por isso, a invalidação acompanha a substituição. Outra distinção é que o LRU da memória física precisa registrar o uso mesmo quando a tabela de páginas é evitada por um hit na TLB.')
 p('A separação entre uma versão sequencial e uma versão com threads permitiu comparar o resultado antes e depois da paralelização. As cópias das entradas e os resultados separados simplificam a consistência, mas criar 16 threads por endereço possui custo. A validação também mostrou a importância de distinguir os campos conferidos no gabarito dos bytes que ainda dependem do arquivo original.')
@@ -207,7 +207,7 @@ table([
     ['Conferir pacote extraído e limpeza', 'Confirmado; dois arquivos no TAR.'],
     ['Preencher uso de IA e revisar o relatório', 'Preenchido no modelo anterior.'],
     ['Comparar todos os bytes com o material original', 'Pendente: falta BACKING_STORE.bin.'],
-    ['Enviar ao Classroom e publicar os commits', 'Não realizado pelo assistente.'],
+    ['Conferir envio ao Classroom e publicação dos commits', 'A conferir antes da entrega.'],
 ], [340, 167])
 
 page()
@@ -222,11 +222,10 @@ table([
     ['Falhas de threads', 'Criação parcial exercitada; falha em pthread_join não foi injetada.'],
     ['Plataformas', 'Linux/WSL e Windows testados; Unix/macOS não executados.'],
     ['Desempenho', 'Não houve benchmark nem comprovação de aceleração.'],
-    ['Revisão manual do aluno', 'Não há registro independente nesta conversa.'],
 ], [140, 367])
 p('<b>Entrega:</b> Classroom: lhcv.pdf e lhcv.tar, separadamente. O TAR contém apenas lhcv/vm.c e lhcv/Makefile. GitHub: código, Makefile, README.md, evidencias.log, relatório, testes e scripts auxiliares. Executáveis, anexos do professor e correct.txt não são versionados.')
 p('<b>Referências técnicas:</b> enunciado 06_vm.docx.pdf e anexos addresses.txt e correct.txt da atividade 7 - VM. Base indicada pelo enunciado: Silberschatz et al., Operating System Concepts, 10ª edição, Designing a Virtual Memory Manager, p. P-51.')
-p('<b>Modelo de apresentação:</b> relatórios anteriores lhcv.pdf das implementações de Deadlock e Sincronização. Foram preservados a identificação, a sequência de dez seções, as tabelas em cinza, a tipografia e a numeração de páginas. O conteúdo técnico e as evidências correspondem ao projeto de memória virtual.')
+p('<b>Organização do relatório:</b> segui o padrão dos meus relatórios anteriores de Deadlock e Sincronização, mantendo a identificação, as dez seções, as tabelas em cinza e a numeração de páginas. Adaptei o conteúdo técnico e as evidências ao projeto de memória virtual.')
 
 
 def footer(canvas, document):
