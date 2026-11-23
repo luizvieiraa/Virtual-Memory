@@ -1,0 +1,101 @@
+EVIDENCIAS - IMPLEMENTACAO 7 / MEMORIA VIRTUAL
+Data: 2026-11-23 (America/Sao_Paulo)
+Autor: Luiz Vieira / lhcv
+
+Escopo: versao final com 128 frames, TLB 16 entradas e POSIX threads.
+Ambientes: Ubuntu via WSL2, GCC 15.2.0; Windows com MinGW-w64.
+As saidas abaixo foram obtidas nesta etapa, sem anexos do professor versionados.
+
+LINUX - BUILD E SUITE
+$ make clean && make
+python3 tests/test_vm.py --addresses .validation/addresses.txt --reference .validation/gabarito.txt
+PASS limits_signed_bytes: 7 addresses, all four policies
+PASS tlb_replacement: 20 addresses, all four policies
+PASS resident_page_tlb_miss: 19 addresses, all four policies
+PASS invalidation_and_page_recency: 133 addresses, all four policies
+PASS repeated_replacement: 512 addresses, all four policies
+PASS random: 1000 addresses, all four policies
+PASS argument, input, backing-store and output errors
+PASS professor reference: all mappings, TLB indices and statistics; byte values excluded
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+
+WINDOWS - BUILD E SUITE
+$ mingw32-make -B CC=gcc
+python tests/test_vm.py --executable ./vm.exe
+PASS limits_signed_bytes: 7 addresses, all four policies
+PASS tlb_replacement: 20 addresses, all four policies
+PASS resident_page_tlb_miss: 19 addresses, all four policies
+PASS invalidation_and_page_recency: 133 addresses, all four policies
+PASS repeated_replacement: 512 addresses, all four policies
+PASS random: 1000 addresses, all four policies
+PASS argument, input, backing-store and output errors
+
+CONCORRENCIA - CASO CURTO
+$ valgrind --tool=helgrind --error-exitcode=99 ../vm smoke.txt lru fifo
+==449== Helgrind, a thread error detector
+==449== Copyright (C) 2007-2024, and GNU GPL'd, by OpenWorks LLP et al.
+==449== Using Valgrind-3.26.0 and LibVEX; rerun with -h for copyright info
+==449== Command: ../vm smoke.txt lru fifo
+==449==
+==449==
+==449== Use --history-level=approx or =none to gain increased speed, at
+==449== the cost of reduced accuracy of conflicting-access information
+==449== For lists of detected and suppressed errors, rerun with: -s
+==449== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 65 from 3)
+
+MEMORIA - CASO CURTO
+$ valgrind --leak-check=full --errors-for-leak-kinds=definite,indirect --error-exitcode=99 ../vm smoke.txt lru fifo
+==498== Memcheck, a memory error detector
+==498== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.
+==498== Using Valgrind-3.26.0 and LibVEX; rerun with -h for copyright info
+==498== Command: ../vm smoke.txt lru fifo
+==498==
+==498==
+==498== HEAP SUMMARY:
+==498==     in use at exit: 0 bytes in 0 blocks
+==498==   total heap usage: 46 allocs, 46 frees, 24,584 bytes allocated
+==498==
+==498== All heap blocks were freed -- no leaks are possible
+==498==
+==498== For lists of detected and suppressed errors, rerun with: -s
+==498== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+
+PACOTE EXTRAIDO - BUILD, SUITE E CLEAN
+$ python3 scripts/package.py
+Extrair em diretorio temporario; make; executar suite contra vm extraido; make clean
+cc  -std=c11 -Wall -Wextra -Wpedantic -O2 -pthread  -o vm vm.c
+PASS limits_signed_bytes: 7 addresses, all four policies
+PASS tlb_replacement: 20 addresses, all four policies
+PASS resident_page_tlb_miss: 19 addresses, all four policies
+PASS invalidation_and_page_recency: 133 addresses, all four policies
+PASS repeated_replacement: 512 addresses, all four policies
+PASS random: 1000 addresses, all four policies
+PASS argument, input, backing-store and output errors
+PASS professor reference: all mappings, TLB indices and statistics; byte values excluded
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+rm -f vm vm.exe
+PASS extracted tar: exact contents, Linux build, full suite, clean
+
+NOTAS E LIMITES
+- Compilacoes Linux e Windows: sem avisos.
+- Caso curto das ferramentas: enderecos 0, 0 e 65535, bytes sinteticos zerados.
+- Helgrind: 0 erros nao suprimidos; 65 ocorrencias suprimidas em 3 contextos.
+- Memcheck: 0 erros, 0 bytes em uso ao encerrar.
+- Suite sintetica: 1691 enderecos por combinacao, 6764 por ambiente.
+- Referencia: 1000 linhas mais 5 estatisticas; lru fifo, 539 faults, 54 hits.
+- BACKING_STORE.bin original indisponivel: valores do gabarito NAO comparados.
+- Dados sinteticos validam bytes com sinal e todas as traducoes das quatro politicas.
+- Historico etapa 7: tres repeticoes identicas por politica versus versao sequencial; falha na sexta criacao aguardou as cinco threads iniciadas.
+- Unix/macOS nao executados.
+- make clean executado na raiz e na copia extraida.
+- lhcv.tar: apenas lhcv/vm.c e lhcv/Makefile; sem binarios ou anexos.
+- PDF revisado visualmente em tres paginas.
+- Sem push automatico e sem envio ao Classroom.
