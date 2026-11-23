@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -93,21 +94,61 @@ struct virtual_memory {
     size_t tlb_hits;
 };
 
-static int find_tlb(const struct virtual_memory *memory, unsigned int page)
+struct tlb_search {
+    struct tlb_entry entry;
+    unsigned int page;
+    bool matched;
+};
+
+static void *search_tlb_entry(void *argument)
 {
+    struct tlb_search *search = argument;
+    search->matched = search->entry.valid && search->entry.page == search->page;
+    return NULL;
+}
+
+static bool find_tlb(const struct virtual_memory *memory, unsigned int page,
+                     int *result)
+{
+    pthread_t threads[TLB_SIZE];
+    struct tlb_search searches[TLB_SIZE];
+    unsigned int created = 0;
+    bool success = true;
+    *result = -1;
+
+    /* Each worker reads its own snapshot; only the main thread updates the TLB. */
     for (unsigned int entry = 0; entry < TLB_SIZE; ++entry) {
-        if (memory->tlb[entry].valid && memory->tlb[entry].page == page) {
-            return (int)entry;
+        searches[entry] = (struct tlb_search){memory->tlb[entry], page, false};
+        int error = pthread_create(&threads[entry], NULL, search_tlb_entry,
+                                   &searches[entry]);
+        if (error != 0) {
+            fprintf(stderr, "Cannot create TLB thread %u: %s\n", entry, strerror(error));
+            success = false;
+            break;
+        }
+        ++created;
+    }
+
+    /* Join every started worker, including after a partial creation failure. */
+    for (unsigned int entry = 0; entry < created; ++entry) {
+        int error = pthread_join(threads[entry], NULL);
+        if (error != 0) {
+            fprintf(stderr, "Cannot join TLB thread %u: %s\n", entry, strerror(error));
+            exit(EXIT_FAILURE);
+        }
+        if (searches[entry].matched) {
+            *result = (int)entry;
         }
     }
-    return -1;
+    return success;
 }
 
 static void invalidate_tlb(struct virtual_memory *memory, unsigned int page)
 {
-    int entry = find_tlb(memory, page);
-    if (entry != -1) {
-        memory->tlb[entry].valid = false;
+    for (unsigned int entry = 0; entry < TLB_SIZE; ++entry) {
+        if (memory->tlb[entry].valid && memory->tlb[entry].page == page) {
+            memory->tlb[entry].valid = false;
+        }
     }
 }
 
@@ -161,7 +202,10 @@ static bool translate_address(struct virtual_memory *memory, FILE *backing_store
     unsigned int page = address / PAGE_SIZE;
     unsigned int offset = address % PAGE_SIZE;
     ++memory->clock;
-    int entry = find_tlb(memory, page);
+    int entry;
+    if (!find_tlb(memory, page, &entry)) {
+        return false;
+    }
     int frame;
     if (entry != -1) {
         ++memory->tlb_hits;
