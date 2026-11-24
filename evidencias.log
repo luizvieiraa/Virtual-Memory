@@ -108,3 +108,34 @@ REVISAO DO RELATORIO - MODELO DAS ENTREGAS ANTERIORES
 - Todas as paginas renderizadas e revisadas visualmente; sem cortes ou sobreposicoes.
 - Pendencia do BACKING_STORE.bin original mantida explicitamente.
 - Codigo C, Makefile e conteudo do TAR nao alterados nesta revisao.
+
+VALIDACAO COMPLETA - 2026-11-24 (America/Sao_Paulo)
+Esta sessao encerra a pendencia do binario mencionada nas sessoes anteriores.
+Fonte: https://raw.githubusercontent.com/greggagne/OSC10e/master/ch10/BACKING_STORE.bin
+Tamanho: 65536 bytes
+SHA256 BACKING_STORE.bin: 6b455ced8be207fda06d48e8fedd5e081b303b45d3ac1685ff630efd91d1c464
+$ make clean && make
+$ python3 tests/test_vm.py --addresses .validation/addresses.txt --reference .validation/gabarito.txt --backing BACKING_STORE.bin
+PASS limits_signed_bytes: 7 addresses, all four policies
+PASS tlb_replacement: 20 addresses, all four policies
+PASS resident_page_tlb_miss: 19 addresses, all four policies
+PASS invalidation_and_page_recency: 133 addresses, all four policies
+PASS repeated_replacement: 512 addresses, all four policies
+PASS random: 1000 addresses, all four policies
+PASS argument, input, backing-store and output errors
+PASS professor reference: complete output
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+
+$ ./vm .validation/addresses.txt lru fifo
+$ cmp correct.txt .validation/gabarito.txt
+Retorno cmp: 0, nenhuma diferenca.
+SHA256 correct.txt: 05574ab43f7834a48696eb2cc6cee770c37959e5fe464760580946952f874106
+SHA256 .validation/gabarito.txt: 05574ab43f7834a48696eb2cc6cee770c37959e5fe464760580946952f874106
+PASS: saida completa identica byte a byte; 1000 traducoes e 5 estatisticas.
+Binario, enderecos e saida continuam ignorados pelo Git.
+Relatorio e README atualizados: pendencia encerrada; PDF revisado nas sete paginas.
+make clean executado apos a validacao; binario de entrada preservado localmente.

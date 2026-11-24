@@ -86,8 +86,10 @@ exclui o campo `Value`: isso valida mapeamentos e estatísticas, não os bytes.
 
 Consulte `evidencias.log` para os resultados efetivamente obtidos. A referência
 `lru fifo` tem 1000 traduções, 539 page faults (0.539) e 54 hits (0.054).
-A comparação desses campos passou. A validação dos valores com o binário
-original permanece pendente, pois o arquivo não estava disponível.
+Em 24/11/2026, a comparação completa passou com o
+[binário oficial do livro](https://github.com/greggagne/OSC10e/blob/master/ch10/BACKING_STORE.bin):
+as 1.005 linhas de `correct.txt` coincidiram byte a byte com o gabarito,
+incluindo os valores. `cmp` não encontrou diferenças e os SHA-256 são iguais.
 
 No Windows com MinGW-w64 e winpthreads, a compilação também foi testada:
 

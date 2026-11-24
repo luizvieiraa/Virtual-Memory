@@ -80,11 +80,11 @@ table([
     ['FIFO e LRU da TLB, independentes', 'OK', 'Quatro combinações comparadas integralmente.'],
     ['Uma thread por entrada da TLB', 'OK', '16 pthreads; join antes de alterar as estruturas.'],
     ['Ler endereços e tratar erros', 'OK', 'Argumentos, formatos, arquivos e saída no log.'],
-    ['Gerar correct.txt no formato pedido', 'OK¹', '1000 índices e traduções iguais ao gabarito.'],
+    ['Gerar correct.txt no formato pedido', 'OK', 'Arquivo idêntico ao gabarito, incluindo valores.'],
     ['Makefile com limpeza', 'OK', 'make clean confirmado no pacote extraído.'],
     ['README, evidências, PDF e TAR', 'OK', 'Arquivos presentes; conteúdo do TAR conferido.'],
 ], [228, 42, 237])
-p('¹ A comparação com o gabarito excluiu os valores dos bytes: o BACKING_STORE.bin original não estava disponível. Os bytes foram validados com dados sintéticos. O PDF do enunciado traz Implementação 6 no cabeçalho; esta entrega segue a identificação 7 - VM do Classroom.')
+p('Em 24/11, obtive o BACKING_STORE.bin do repositório oficial do livro e comparei a saída completa: os 1.000 valores e traduções e as estatísticas coincidiram byte a byte. O PDF do enunciado traz Implementação 6 no cabeçalho; segui a identificação 7 - VM do Classroom.')
 
 page()
 h('3. Como Reproduzir')
@@ -124,13 +124,14 @@ table([
     ['Carregar páginas com 256 frames', 'OK', 'c81bda5; 19/11.'],
     ['Reduzir para 128 e adicionar FIFO', 'OK', 'ba3e90b; 19/11.'],
     ['Adicionar LRU de páginas', 'OK', '4a8a8c3; 22/11.'],
-    ['Integrar TLB e correct.txt', 'Parcial¹', 'bd3fa5f; 22/11; referência sem os bytes.'],
+    ['Integrar TLB e correct.txt', 'OK', 'bd3fa5f; 22/11; comparação inicial sem os bytes.'],
     ['Usar uma thread por entrada', 'OK', 'bf1f192; 23/11; saída igual à versão sequencial.'],
     ['Simular falha na sexta criação', 'Erro esperado', 'As cinco threads iniciadas foram aguardadas.'],
     ['Alternar build Linux/Windows', 'Falha de ambiente', 'Build existente impediu gerar vm.exe; recompilar com -B resolveu.'],
     ['Gerar e validar a entrega', 'OK', '6f6be4f; 23/11; suíte no TAR extraído.'],
+    ['Validar com o binário oficial do livro', 'OK', '24/11; saída completa idêntica ao gabarito.'],
 ], [222, 72, 213])
-p('Registrei no diário as etapas e os resultados disponíveis no histórico e no evidencias.log. Não registrei um bug funcional com captura antes/depois nesta implementação. A falha de ambiente acima foi de compilação entre sistemas, sem alteração do algoritmo. ¹ A limitação dos bytes está descrita na seção 6.2.')
+p('Registrei no diário as etapas e os resultados disponíveis no histórico e no evidencias.log. Não registrei um bug funcional com captura antes/depois nesta implementação. A falha de ambiente acima foi de compilação entre sistemas, sem alteração do algoritmo. A comparação integral posterior está registrada na seção 6.2.')
 h('5.3 Núcleo do algoritmo')
 p('A consulta usa página = endereço / 256 e deslocamento = endereço % 256. Em miss da TLB, consulta a tabela; em page fault, lê 256 bytes na posição página × 256. Calcula frame × 256 + deslocamento e converte o byte para -128..127. A busca cria 16 threads por acesso; o custo de criação e junção pode superar o de uma busca sequencial tão curta. Não foi medida aceleração.')
 
@@ -144,14 +145,14 @@ table([
     ['Compilação Windows', 'mingw32-make -B CC=gcc', 'Sem avisos; gera vm.exe.'],
     ['Quatro políticas', 'python3 tests/test_vm.py', 'Todos os casos sintéticos coincidiram.'],
     ['Entradas e arquivos inválidos', 'Suíte de erros e formato', 'Falha com diagnóstico; sem estatísticas de sucesso.'],
-    ['Referência lru / fifo', '1000 endereços fornecidos', 'Índices, endereços e contadores iguais.'],
+    ['Referência lru / fifo', 'Binário oficial; cmp e SHA-256', '1005 linhas idênticas, incluindo os valores.'],
     ['Helgrind: caso curto', '0, 0, 65535; lru / fifo', '0 erros não suprimidos.'],
     ['Memcheck: caso curto', 'Mesmos três endereços', '0 erros e 0 bytes em uso ao encerrar.'],
     ['Pacote extraído', 'make; suíte; make clean', 'Conteúdo exato e execução confirmados.'],
 ], [120, 220, 167])
-h('6.2 Saída observada e limites da referência')
-code('PASS professor reference: all mappings, TLB indices and statistics;\n     byte values excluded\nNumber of Translated Addresses = 1000\nPage Faults = 539\nPage Fault Rate = 0.539\nTLB Hits = 54\nTLB Hit Rate = 0.054')
-p('Transcrição do log, com a mensagem longa quebrada para leitura. A execução usou os endereços do professor e um backing store zerado. Apenas o campo Value foi excluído da comparação. Os 1.000 endereços físicos e índices da TLB, além das cinco estatísticas, coincidiram. Isso não valida o conteúdo do binário original.')
+h('6.2 Validação completa com o gabarito')
+code('PASS professor reference: complete output\nNumber of Translated Addresses = 1000\nPage Faults = 539\nPage Fault Rate = 0.539\nTLB Hits = 54\nTLB Hit Rate = 0.054')
+p('Em 24/11, baixei o BACKING_STORE.bin de 65.536 bytes do repositório oficial greggagne/OSC10e (ch10). Executei a suíte com --backing e, separadamente, ./vm .validation/addresses.txt lru fifo. Comparei correct.txt com o gabarito usando cmp: nenhuma diferença. As 1.000 traduções, os índices da TLB, os valores e as cinco estatísticas coincidiram, incluindo espaços e quebras de linha. Os dois arquivos têm o mesmo SHA-256, registrado no evidencias.log.')
 p('A cobertura de Helgrind e Memcheck foi de um caso curto. O Helgrind registrou 65 ocorrências suprimidas em três contextos; não houve erro não suprimido. Esses resultados não demonstram todas as intercalações possíveis das threads.')
 
 page()
@@ -198,7 +199,7 @@ table([
 p('<b>Como validei:</b> utilizei a ferramenta de IA para executar a compilação, os testes automatizados, a comparação com o gabarito e a extração do TAR. Mantive os resultados no evidencias.log. Essa validação foi automatizada com apoio de IA; não registrei uma sessão manual separada.')
 h('8. Reflexão Final')
 p('A tradução correta depende de manter coerentes a TLB, a tabela de páginas e a ocupação dos frames. Um mapeamento antigo na TLB pode apontar para um frame que já pertence a outra página. Por isso, a invalidação acompanha a substituição. Outra distinção é que o LRU da memória física precisa registrar o uso mesmo quando a tabela de páginas é evitada por um hit na TLB.')
-p('A separação entre uma versão sequencial e uma versão com threads permitiu comparar o resultado antes e depois da paralelização. As cópias das entradas e os resultados separados simplificam a consistência, mas criar 16 threads por endereço possui custo. A validação também mostrou a importância de distinguir os campos conferidos no gabarito dos bytes que ainda dependem do arquivo original.')
+p('A separação entre uma versão sequencial e uma versão com threads permitiu comparar o resultado antes e depois da paralelização. As cópias das entradas e os resultados separados simplificam a consistência, mas criar 16 threads por endereço possui custo. A validação em duas fases permitiu conferir primeiro os mapeamentos e, depois de obter o binário oficial, todos os bytes da saída. A igualdade integral com o gabarito encerrou essa pendência.')
 h('9. Checklist Final de Entrega')
 table([
     ['Item', 'Situação'],
@@ -206,25 +207,24 @@ table([
     ['Testar limites, erros e quatro políticas', 'Confirmado; evidencias.log.'],
     ['Conferir pacote extraído e limpeza', 'Confirmado; dois arquivos no TAR.'],
     ['Preencher uso de IA e revisar o relatório', 'Preenchido no modelo anterior.'],
-    ['Comparar todos os bytes com o material original', 'Pendente: falta BACKING_STORE.bin.'],
+    ['Comparar todos os bytes com o material original', 'Confirmado; cmp e SHA-256 iguais.'],
     ['Conferir envio ao Classroom e publicação dos commits', 'A conferir antes da entrega.'],
 ], [340, 167])
 
 page()
 h('10. Se eu tivesse mais 2 horas')
-p('A primeira prioridade seria obter o BACKING_STORE.bin original e executar a comparação completa com o gabarito, incluindo o campo Value. Em seguida, ampliaria os testes de concorrência para sequências mais longas com substituição, verificaria falhas em diferentes pontos de criação de threads e executaria a compilação em macOS ou outro Unix.')
+p('Com a comparação completa do gabarito concluída, ampliaria os testes de concorrência para sequências mais longas com substituição, verificaria falhas em diferentes pontos de criação de threads e executaria a compilação em macOS ou outro Unix.')
 p('Também mediria separadamente o custo da versão sequencial e da criação de 16 threads por acesso. Isso permitiria explicar quantitativamente o efeito da paralelização pedida, sem assumir que a busca será mais rápida. Uma avaliação posterior poderia comparar a abordagem atual com trabalhadores persistentes, preservando o requisito de uma thread por entrada.')
 h('Limitações e pendências')
 table([
     ['Aspecto', 'Limitação registrada'],
-    ['Binário original', 'Não disponível; bytes do gabarito não comparados.'],
     ['Cobertura de concorrência', 'Saídas repetidas e caso curto em Helgrind não cobrem todas as intercalações.'],
     ['Falhas de threads', 'Criação parcial exercitada; falha em pthread_join não foi injetada.'],
     ['Plataformas', 'Linux/WSL e Windows testados; Unix/macOS não executados.'],
     ['Desempenho', 'Não houve benchmark nem comprovação de aceleração.'],
 ], [140, 367])
 p('<b>Entrega:</b> Classroom: lhcv.pdf e lhcv.tar, separadamente. O TAR contém apenas lhcv/vm.c e lhcv/Makefile. GitHub: código, Makefile, README.md, evidencias.log, relatório, testes e scripts auxiliares. Executáveis, anexos do professor e correct.txt não são versionados.')
-p('<b>Referências técnicas:</b> enunciado 06_vm.docx.pdf e anexos addresses.txt e correct.txt da atividade 7 - VM. Base indicada pelo enunciado: Silberschatz et al., Operating System Concepts, 10ª edição, Designing a Virtual Memory Manager, p. P-51.')
+p('<b>Referências técnicas:</b> enunciado 06_vm.docx.pdf e anexos addresses.txt e correct.txt da atividade 7 - VM. Base indicada pelo enunciado: Silberschatz et al., Operating System Concepts, 10ª edição, Designing a Virtual Memory Manager, p. P-51. Binário: github.com/greggagne/OSC10e, ch10/BACKING_STORE.bin.')
 p('<b>Organização do relatório:</b> segui o padrão dos meus relatórios anteriores de Deadlock e Sincronização, mantendo a identificação, as dez seções, as tabelas em cinza e a numeração de páginas. Adaptei o conteúdo técnico e as evidências ao projeto de memória virtual.')
 
 
