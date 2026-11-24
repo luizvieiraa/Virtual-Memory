@@ -71,18 +71,11 @@ sequencial de 16 entradas; não é alegada melhoria de desempenho.
 
 ## Testes e evidências
 
-Python 3 é necessário somente para os testes e o empacotamento:
-
-```sh
-make test
-python3 tests/test_vm.py --addresses addresses.txt --reference gabarito.txt --backing BACKING_STORE.bin
-```
-
-Os testes geram dados sintéticos em diretórios temporários e comparam toda a
-saída das quatro combinações com um modelo independente. Cobrem valores com
-sinal, limites, hits, misses, recência, invalidação, substituições e erros.
-Sem `--backing`, a comparação opcional com o professor usa bytes zerados e
-exclui o campo `Value`: isso valida mapeamentos e estatísticas, não os bytes.
+As verificações registradas no log usaram dados sintéticos e um modelo
+independente para conferir as quatro combinações de políticas, além de casos
+de erro. As ferramentas auxiliares usadas nessa validação não integram a entrega.
+Para reproduzir a comparação com o professor, execute `./vm addresses.txt lru fifo`
+e `diff -u gabarito.txt correct.txt` com os anexos na pasta.
 
 Consulte `evidencias.log` para os resultados efetivamente obtidos. A referência
 `lru fifo` tem 1000 traduções, 539 page faults (0.539) e 54 hits (0.054).
@@ -95,7 +88,6 @@ No Windows com MinGW-w64 e winpthreads, a compilação também foi testada:
 
 ```powershell
 mingw32-make -B CC=gcc
-python tests/test_vm.py --executable ./vm.exe
 mingw32-make clean RM="cmd /c del /Q"
 ```
 
@@ -106,17 +98,14 @@ recompilação: os executáveis de cada sistema têm formatos diferentes.
 ## Entrega
 
 ```sh
-make package
 tar -tf lhcv.tar
 ```
 
 O pacote contém somente `lhcv/vm.c` e `lhcv/Makefile`, conforme o enunciado.
-Após extrair, entre em `lhcv/` e execute `make`. O alvo padrão não depende de
-Python. Os alvos opcionais `test` e `package` exigem os arquivos auxiliares
-disponíveis no repositório completo.
+Após extrair, entre em `lhcv/` e execute `make`. A compilação depende somente
+do compilador C, de POSIX threads e do Make.
 
-- GitHub: `vm.c`, `Makefile`, este README, `evidencias.log`, `lhcv.pdf`, testes
-  e scripts auxiliares. Os commits anteriores preservam as versões por etapa.
+- GitHub: `vm.c`, `Makefile`, este README, `evidencias.log` e `lhcv.pdf`. Os commits anteriores preservam as versões por etapa.
 - Classroom: enviar **`lhcv.pdf` e `lhcv.tar` separadamente**.
 - Não incluir executáveis, anexos do professor ou `correct.txt` no `.tar`.
 

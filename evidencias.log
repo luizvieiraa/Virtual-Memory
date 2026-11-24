@@ -139,3 +139,11 @@ PASS: saida completa identica byte a byte; 1000 traducoes e 5 estatisticas.
 Binario, enderecos e saida continuam ignorados pelo Git.
 Relatorio e README atualizados: pendencia encerrada; PDF revisado nas sete paginas.
 make clean executado apos a validacao; binario de entrada preservado localmente.
+
+AJUSTE DA ENTREGA - 2026-11-24
+Scripts e testes auxiliares retirados do versionamento, conforme solicitacao.
+Makefile mantido somente com compilacao e limpeza.
+README e relatorio alinhados aos arquivos entregues.
+TAR regenerado apenas com vm.c e Makefile.
+Compilacao Linux e comparacao integral com cmp repetidas: aprovadas.
+Os comandos de ferramentas auxiliares nas sessoes anteriores sao registros historicos.
